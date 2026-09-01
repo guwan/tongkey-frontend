@@ -369,24 +369,107 @@ type MappingForm = {
   enabled: boolean | string
 }
 
-const FIELD_MAPPING_HINT: Record<string, string> = {
-  USER: '{"external_key":"emp_no","username":"login_name","display_name":"real_name","status":"status","extra_attrs":"json_col"}',
-  ROLE: '{"external_key":"role_no","code":"role_code","name":"role_name","description":"remark"}',
-  PERMISSION: '{"external_key":"perm_no","code":"perm_code","name":"perm_name","resource_type":"perm_type"}',
-  USER_ROLE: '{"external_key":"ur_id","user_external_key":"emp_no","role_external_key":"role_no"}',
-  ROLE_PERMISSION: '{"external_key":"rp_id","role_external_key":"role_no","permission_external_key":"perm_no"}',
+type EntityFieldDef = { key: string; label: string; required: boolean; desc?: string }
+
+/** 每种实体的目标字段定义（含标签、是否必填、说明） */
+const ENTITY_FIELDS: Record<string, EntityFieldDef[]> = {
+  USER: [
+    { key: 'external_key', label: 'external_key', required: true, desc: '外部唯一标识，用于幂等 upsert（必填）' },
+    { key: 'username', label: 'username', required: false, desc: '登录名 / 账号' },
+    { key: 'display_name', label: 'display_name', required: false, desc: '显示名 / 真实姓名' },
+    { key: 'status', label: 'status', required: false, desc: '账号状态（0/1 或 ENABLED/DISABLED）' },
+    { key: 'extra_attrs', label: 'extra_attrs', required: false, desc: '扩展属性，存入 JSON' },
+  ],
+  ROLE: [
+    { key: 'external_key', label: 'external_key', required: true, desc: '外部唯一标识（必填）' },
+    { key: 'code', label: 'code', required: true, desc: '角色编码（必填）' },
+    { key: 'name', label: 'name', required: false, desc: '角色名称' },
+    { key: 'description', label: 'description', required: false, desc: '描述 / 备注' },
+    { key: 'extra_attrs', label: 'extra_attrs', required: false, desc: '扩展属性，存入 JSON' },
+  ],
+  PERMISSION: [
+    { key: 'external_key', label: 'external_key', required: true, desc: '外部唯一标识（必填）' },
+    { key: 'code', label: 'code', required: true, desc: '权限编码（必填）' },
+    { key: 'name', label: 'name', required: false, desc: '权限名称' },
+    { key: 'description', label: 'description', required: false, desc: '描述 / 备注' },
+    { key: 'resource_type', label: 'resource_type', required: false, desc: '资源类型' },
+    { key: 'extra_attrs', label: 'extra_attrs', required: false, desc: '扩展属性，存入 JSON' },
+  ],
+  USER_ROLE: [
+    { key: 'external_key', label: 'external_key', required: false, desc: '可选，用于幂等' },
+    { key: 'user_external_key', label: 'user_external_key', required: true, desc: '用户的 external_key（必填）' },
+    { key: 'role_external_key', label: 'role_external_key', required: true, desc: '角色的 external_key（必填）' },
+  ],
+  ROLE_PERMISSION: [
+    { key: 'external_key', label: 'external_key', required: false, desc: '可选，用于幂等' },
+    { key: 'role_external_key', label: 'role_external_key', required: true, desc: '角色的 external_key（必填）' },
+    { key: 'permission_external_key', label: 'permission_external_key', required: true, desc: '权限的 external_key（必填）' },
+  ],
+}
+
+/** 同义词表：目标字段 key → 可能的 SQL 列名片段（小写，不含下划线） */
+const FIELD_SYNONYMS: Record<string, string[]> = {
+  external_key: ['id', 'key', 'no', 'number', 'code', 'shortid', 'short_id', 'userid', 'user_id', 'urid', 'ur_id', 'rpid', 'rp_id'],
+  username: ['username', 'user_name', 'login', 'loginname', 'login_name', 'account', 'usercode', 'user_code'],
+  display_name: ['displayname', 'display_name', 'realname', 'real_name', 'username', 'user_name', 'name', 'fullname'],
+  status: ['status', 'state', 'enabled', 'active', 'flag', 'deleted', 'deletedmark', 'deleted_mark'],
+  code: ['code', 'rolecode', 'role_code', 'permcode', 'perm_code', 'rolevode'],
+  name: ['name', 'rolename', 'role_name', 'permname', 'perm_name', 'title'],
+  description: ['description', 'desc', 'remark', 'memo', 'comment', 'note'],
+  resource_type: ['resourcetype', 'resource_type', 'restype', 'res_type', 'type'],
+  extra_attrs: ['extra', 'extraattrs', 'extra_attrs', 'attrs', 'json', 'ext'],
+  user_external_key: ['userkey', 'user_key', 'empno', 'emp_no', 'userid', 'user_id'],
+  role_external_key: ['rolekey', 'role_key', 'roleno', 'role_no', 'rolecode', 'role_code'],
+  permission_external_key: ['permkey', 'perm_key', 'permno', 'perm_no', 'permcode', 'perm_code'],
+}
+
+function normalizeCol(s: string): string {
+  return s.toLowerCase().replace(/[_-\s]/g, '')
+}
+
+/** 给定目标字段 key + SQL 列名，是否算匹配 */
+function isFieldMatch(targetKey: string, sqlCol: string): boolean {
+  const col = normalizeCol(sqlCol)
+  const synonyms = FIELD_SYNONYMS[targetKey] ?? [targetKey]
+  return synonyms.some((syn) => {
+    const n = normalizeCol(syn)
+    if (!n) return false
+    // 精确命中
+    if (col === n) return true
+    // SQL 列名包含目标同义词
+    if (col.includes(n)) return true
+    // 目标同义词包含 SQL 列名
+    if (n.includes(col)) return true
+    return false
+  })
+}
+
+/** 自动推断映射：目标字段 → SQL 列 */
+function autoInfer(targetEntity: string, columns: string[]): Record<string, string> {
+  const fields = ENTITY_FIELDS[targetEntity] ?? []
+  const assigned = new Set<string>()
+  const result: Record<string, string> = {}
+  for (const f of fields) {
+    const match = columns.find((c) => !assigned.has(c) && isFieldMatch(f.key, c))
+    if (match) {
+      result[f.key] = match
+      assigned.add(match)
+    }
+  }
+  return result
 }
 
 function MappingFormModal({ ds, mapping, onClose, onSaved }: {
   ds: DataSourceView; mapping: SyncMapping | null; onClose: () => void; onSaved: () => void
 }) {
+  const ENTITY_VALUES = ['USER', 'ROLE', 'PERMISSION', 'USER_ROLE', 'ROLE_PERMISSION']
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<MappingForm>({
     mode: 'onSubmit',
     defaultValues: {
       name: mapping?.name ?? '',
       targetEntity: mapping?.targetEntity ?? 'USER',
       sqlText: mapping?.sqlText ?? 'SELECT ',
-      fieldMapping: mapping?.fieldMapping ?? FIELD_MAPPING_HINT.USER,
+      fieldMapping: mapping?.fieldMapping ?? '{}',
       conflictStrategy: mapping?.conflictStrategy ?? 'SYNC_OVERRIDE',
       batchSize: mapping?.batchSize ?? 500,
       enabled: mapping?.enabled ?? true,
@@ -395,21 +478,81 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
   const sqlText = watch('sqlText')
   const targetEntity = watch('targetEntity')
 
+  // 内部状态
+  const [sqlColumns, setSqlColumns] = useState<string[]>([])
+  const [mappingObj, setMappingObj] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(mapping?.fieldMapping ?? '{}') } catch { return {} }
+  })
+  const [inferring, setInferring] = useState(false)
+  const [showJson, setShowJson] = useState(false)
+
+  // 切换目标实体时清空映射（新建场景）
+  const onEntityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const t = e.target.value
+    setValue('targetEntity', t)
+    if (!mapping) {
+      setMappingObj({})
+      setSqlColumns([])
+    }
+  }
+
+  const runInfer = async () => {
+    if (!sqlText || sqlText.trim().length < 6) {
+      toast('请先写好 SQL', 'error')
+      return
+    }
+    setInferring(true)
+    try {
+      const res = await dataSourceApi.sqlPreview(ds.id, sqlText, 5)
+      const cols = res.rows && res.rows.length > 0 ? Object.keys(res.rows[0]) : []
+      setSqlColumns(cols)
+      const inferred = autoInfer(targetEntity, cols)
+      setMappingObj(inferred)
+      toast(`预览成功（${res.rowCount} 行 / ${cols.length} 列），已自动推断 ${Object.keys(inferred).length} 个字段映射`, 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'SQL 预览失败', 'error')
+    } finally {
+      setInferring(false)
+    }
+  }
+
+  const updateMapping = (targetKey: string, sqlCol: string) => {
+    setMappingObj((prev) => {
+      const next = { ...prev }
+      if (sqlCol === '' || sqlCol === null || sqlCol === undefined) {
+        delete next[targetKey]
+      } else {
+        next[targetKey] = sqlCol
+      }
+      return next
+    })
+  }
+
   const submit = async (form: MappingForm) => {
+    // 校验必填 external_key
+    const fields = ENTITY_FIELDS[form.targetEntity] ?? []
+    const missingReq = fields.filter((f) => f.required && !mappingObj[f.key])
+    if (missingReq.length > 0) {
+      toast(`请先完成必填字段映射：${missingReq.map((f) => f.key).join(', ')}`, 'error')
+      return
+    }
+    const payload: MappingForm = { ...form, fieldMapping: JSON.stringify(mappingObj) }
     try {
       if (mapping) {
-        await dataSourceApi.updateMapping(mapping.id, form)
+        await dataSourceApi.updateMapping(mapping.id, payload)
       } else {
-        await dataSourceApi.createMapping(ds.id, form)
+        await dataSourceApi.createMapping(ds.id, payload)
       }
-      toast(mapping ? '已更新' : '已创建（保存前已通过 SQL 只读校验）')
+      toast(mapping ? '已更新' : '已创建')
       onSaved()
     } catch (err) {
       toast(err instanceof Error ? err.message : '保存失败', 'error')
     }
   }
 
-  const ENTITY_VALUES = ['USER', 'ROLE', 'PERMISSION', 'USER_ROLE', 'ROLE_PERMISSION']
+  const entityFields = ENTITY_FIELDS[targetEntity] ?? []
+  const mappedCount = Object.keys(mappingObj).length
+  const requiredMissing = entityFields.filter((f) => f.required && !mappingObj[f.key]).length
 
   return (
     <Modal open title={mapping ? '编辑映射任务' : '新建映射任务'} onClose={onClose} wide>
@@ -421,11 +564,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
           <Field label="目标实体" required error={errors.targetEntity?.message}>
             <Select {...register('targetEntity', {
               validate: (v) => ENTITY_VALUES.includes(v) || '请选择目标实体',
-            })} onChange={(e) => {
-              const t = e.target.value as MappingForm['targetEntity']
-              setValue('targetEntity', t)
-              if (!mapping) setValue('fieldMapping', FIELD_MAPPING_HINT[t])
-            }}>
+            })} onChange={onEntityChange}>
               {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </Field>
@@ -451,26 +590,89 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
           </div>
         </Field>
 
-        <Field label="字段映射（目标字段 → SQL 列，JSON）" required error={errors.fieldMapping?.message}
-          hint={`external_key 必填（幂等键）。${targetEntity} 参考：${FIELD_MAPPING_HINT[targetEntity]}`}>
-          <textarea
-            {...register('fieldMapping', {
-              required: '请输入字段映射',
-              validate: (s) => {
-                try {
-                  const o = JSON.parse(s)
-                  if (typeof o !== 'object' || o === null || Array.isArray(o)) {
-                    return '必须是 JSON 对象'
-                  }
-                  return true
-                } catch {
-                  return '必须是合法 JSON'
-                }
-              },
-            })}
-            rows={3}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none"
-          />
+        {/* 图形化字段映射 */}
+        <Field
+          label={<>字段映射 <span className="ml-2 text-xs font-normal text-slate-500">已映射 {mappedCount}/{entityFields.length}{requiredMissing > 0 && <span className="ml-1 text-amber-600">· 缺 {requiredMissing} 个必填</span>}</span></>}
+          hint={
+            sqlColumns.length > 0
+              ? `SQL 列：${sqlColumns.join(' · ')}`
+              : '点下方「预览并自动推断」按钮，执行 SQL 后自动匹配字段'
+          }
+        >
+          <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+            {/* 操作栏 */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="secondary"
+                type="button"
+                size="sm"
+                disabled={inferring}
+                onClick={runInfer}
+              >
+                {inferring ? '预览中…' : '🔍 预览并自动推断'}
+              </Button>
+              <button type="button" className="text-xs text-slate-500 hover:text-slate-800" onClick={() => setShowJson((v) => !v)}>
+                {showJson ? '隐藏原始 JSON' : '查看原始 JSON'}
+              </button>
+            </div>
+
+            {/* 映射表格 */}
+            {sqlColumns.length > 0 || mappingObj ? (
+              <div className="overflow-hidden rounded border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 text-slate-600">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">目标字段</th>
+                      <th className="px-3 py-2 text-left font-medium">SQL 列</th>
+                      <th className="px-3 py-2 text-left font-medium">说明</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {entityFields.map((f) => {
+                      const selected = mappingObj[f.key] ?? ''
+                      const missing = f.required && !selected
+                      return (
+                        <tr key={f.key} className={missing ? 'bg-amber-50' : ''}>
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {f.required && <span className="mr-0.5 text-red-500">*</span>}
+                            {f.key}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Select
+                              value={selected}
+                              onChange={(e) => updateMapping(f.key, e.target.value)}
+                              className={cls(missing && '!border-amber-400 focus:!border-amber-500')}
+                            >
+                              <option value="">— 不映射 —</option>
+                              {sqlColumns.length > 0 ? (
+                                sqlColumns.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))
+                              ) : (
+                                mappingObj[f.key] && <option value={mappingObj[f.key]}>{mappingObj[f.key]}</option>
+                              )}
+                            </Select>
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-500">{f.desc}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-6 text-center text-sm text-slate-400">
+                点「预览并自动推断」执行 SQL，从列名智能匹配映射
+              </div>
+            )}
+
+            {/* 原始 JSON */}
+            {showJson && (
+              <div className="mt-2 rounded border border-slate-200 bg-slate-900 p-2">
+                <pre className="overflow-x-auto text-xs text-green-300">{JSON.stringify(mappingObj, null, 2)}</pre>
+              </div>
+            )}
+          </div>
         </Field>
 
         <div className="grid grid-cols-3 items-end gap-4">
