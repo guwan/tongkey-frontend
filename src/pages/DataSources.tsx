@@ -378,7 +378,14 @@ const ENTITY_FIELDS: Record<string, EntityFieldDef[]> = {
     { key: 'username', label: 'username', required: false, desc: '登录名 / 账号' },
     { key: 'display_name', label: 'display_name', required: false, desc: '显示名 / 真实姓名' },
     { key: 'status', label: 'status', required: false, desc: '账号状态（0/1 或 ENABLED/DISABLED）' },
-    { key: 'extra_attrs', label: 'extra_attrs', required: false, desc: '扩展属性，存入 JSON' },
+    { key: 'password', label: 'password', required: false, desc: '密码' },
+    { key: 'gender', label: 'gender', required: false, desc: '性别' },
+    { key: 'department', label: 'department', required: false, desc: '科室 / 部门' },
+    { key: 'position', label: 'position', required: false, desc: '岗位 / 职位' },
+    { key: 'phone', label: 'phone', required: false, desc: '手机号' },
+    { key: 'email', label: 'email', required: false, desc: '邮箱' },
+    { key: 'avatar_url', label: 'avatar_url', required: false, desc: '头像 URL' },
+    { key: 'extra_attrs', label: 'extra_attrs', required: false, desc: '扩展属性，未映射列自动收集' },
   ],
   ROLE: [
     { key: 'external_key', label: 'external_key', required: true, desc: '外部唯一标识（必填）' },
@@ -413,6 +420,13 @@ const FIELD_SYNONYMS: Record<string, string[]> = {
   username: ['username', 'user_name', 'login', 'loginname', 'login_name', 'account', 'usercode', 'user_code'],
   display_name: ['displayname', 'display_name', 'realname', 'real_name', 'username', 'user_name', 'name', 'fullname'],
   status: ['status', 'state', 'enabled', 'active', 'flag', 'deleted', 'deletedmark', 'deleted_mark'],
+  password: ['password', 'pwd', 'passwd', 'secret'],
+  gender: ['gender', 'sex', 'sexuality'],
+  department: ['department', 'dept', 'unit', 'org', 'orgcode', 'org_code', 'deptcode', 'dept_code', 'unitcode', 'unit_code', 'branch'],
+  position: ['position', 'post', 'title', 'job', 'jobtitle', 'job_title', 'duty'],
+  phone: ['phone', 'mobile', 'tel', 'telephone', 'cellphone'],
+  email: ['email', 'mail', 'e_mail'],
+  avatar_url: ['avatar', 'avatarurl', 'avatar_url', 'photo', 'image', 'pic'],
   code: ['code', 'rolecode', 'role_code', 'permcode', 'perm_code', 'rolevode'],
   name: ['name', 'rolename', 'role_name', 'permname', 'perm_name', 'title'],
   description: ['description', 'desc', 'remark', 'memo', 'comment', 'note'],
@@ -480,6 +494,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
 
   // 内部状态
   const [sqlColumns, setSqlColumns] = useState<string[]>([])
+  const [previewRow, setPreviewRow] = useState<Record<string, string | null> | null>(null)
   const [mappingObj, setMappingObj] = useState<Record<string, string>>(() => {
     try { return JSON.parse(mapping?.fieldMapping ?? '{}') } catch { return {} }
   })
@@ -493,6 +508,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
     if (!mapping) {
       setMappingObj({})
       setSqlColumns([])
+      setPreviewRow(null)
     }
   }
 
@@ -506,6 +522,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
       const res = await dataSourceApi.sqlPreview(ds.id, sqlText, 5)
       const cols = res.rows && res.rows.length > 0 ? Object.keys(res.rows[0]) : []
       setSqlColumns(cols)
+      setPreviewRow(res.rows && res.rows.length > 0 ? res.rows[0] : null)
       const inferred = autoInfer(targetEntity, cols)
       setMappingObj(inferred)
       toast(`预览成功（${res.rowCount} 行 / ${cols.length} 列），已自动推断 ${Object.keys(inferred).length} 个字段映射`, 'success')
@@ -624,6 +641,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">目标字段</th>
                       <th className="px-3 py-2 text-left font-medium">SQL 列</th>
+                      <th className="px-3 py-2 text-left font-medium">样例值</th>
                       <th className="px-3 py-2 text-left font-medium">说明</th>
                     </tr>
                   </thead>
@@ -631,6 +649,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
                     {entityFields.map((f) => {
                       const selected = mappingObj[f.key] ?? ''
                       const missing = f.required && !selected
+                      const sampleVal = selected && previewRow ? previewRow[selected] : undefined
                       return (
                         <tr key={f.key} className={missing ? 'bg-amber-50' : ''}>
                           <td className="px-3 py-2 font-mono text-xs">
@@ -653,12 +672,38 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
                               )}
                             </Select>
                           </td>
+                          <td className="px-3 py-2 max-w-[160px] truncate text-xs text-slate-500" title={sampleVal ?? undefined}>
+                            {sampleVal !== undefined
+                              ? (sampleVal === null || sampleVal === '' ? <span className="italic text-slate-300">null</span> : <span className="text-slate-700">{String(sampleVal)}</span>)
+                              : <span className="italic text-slate-300">—</span>}
+                          </td>
                           <td className="px-3 py-2 text-xs text-slate-500">{f.desc}</td>
                         </tr>
                       )
                     })}
                   </tbody>
                 </table>
+                {/* 预览数据行 */}
+                {previewRow && sqlColumns.length > 0 && (
+                  <div className="border-t border-slate-200 bg-slate-900/95 px-3 py-2">
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                      预览数据 · 第 1 行（{Object.keys(previewRow).length} 列）
+                    </div>
+                    <div className="overflow-x-auto">
+                      <div className="flex gap-3 text-xs">
+                        {sqlColumns.map((c) => (
+                          <div key={c} className="flex-shrink-0">
+                            <span className="text-sky-400">{c}</span>
+                            <span className="text-slate-500">: </span>
+                            <span className={cls(previewRow[c] === null || previewRow[c] === '' ? 'text-slate-400 italic' : 'text-amber-300')}>
+                              {previewRow[c] === null ? 'NULL' : previewRow[c] === '' ? '(空)' : String(previewRow[c])}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-6 text-center text-sm text-slate-400">
