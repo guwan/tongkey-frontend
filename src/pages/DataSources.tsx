@@ -159,9 +159,10 @@ type DsForm = z.infer<typeof dsSchema>
 
 function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<DsForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isDirty, touchedFields } } = useForm<DsForm>({
     resolver: zodResolver(dsSchema),
-    mode: 'onChange',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       name: ds?.name ?? '',
       dbType: ds?.dbType ?? 'MYSQL',
