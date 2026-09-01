@@ -148,7 +148,10 @@ const dsSchema = z.object({
   scheduleCron: z.string().optional().default(''),
   syncMode: z.enum(['FULL', 'INCREMENTAL']),
   incrementalColumn: z.string().optional().default(''),
-  connectTimeoutSeconds: z.coerce.number().transform((v) => Number.isNaN(v) ? 10 : v).min(1, '最小 1 秒').max(600, '最大 600 秒'),
+  connectTimeoutSeconds: z.coerce.number().transform((v) => {
+    if (Number.isNaN(v)) return 10
+    return Math.min(600, Math.max(1, v))
+  }),
   notes: z.string().optional().default(''),
 })
 
