@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { dataSourceApi } from '../api'
@@ -360,24 +359,15 @@ function conflictLabel(v: string) {
 
 /* ---------------- 映射表单 ---------------- */
 
-const mappingSchema = z.object({
-  name: z.string().min(1, '请输入名称'),
-  targetEntity: z.enum(['USER', 'ROLE', 'PERMISSION', 'USER_ROLE', 'ROLE_PERMISSION']),
-  sqlText: z.string().min(1, '请输入 SQL').refine((s) => /^\s*(select|with)/i.test(s), '仅允许 SELECT / WITH 开头的只读语句'),
-  fieldMapping: z.string().min(1, '请输入字段映射').refine((s) => {
-    try {
-      const o = JSON.parse(s)
-      return typeof o === 'object' && o !== null && !Array.isArray(o)
-    } catch {
-      return false
-    }
-  }, '必须是 JSON 对象，如 {"external_key":"emp_no","username":"login_name"}'),
-  conflictStrategy: z.enum(['SYNC_OVERRIDE', 'NATIVE_PRIORITY', 'SKIP']),
-  batchSize: z.coerce.number().min(1).max(5000),
-  enabled: z.boolean(),
-})
-
-type MappingForm = z.infer<typeof mappingSchema>
+type MappingForm = {
+  name: string
+  targetEntity: string
+  sqlText: string
+  fieldMapping: string
+  conflictStrategy: string
+  batchSize: number
+  enabled: boolean | string
+}
 
 const FIELD_MAPPING_HINT: Record<string, string> = {
   USER: '{"external_key":"emp_no","username":"login_name","display_name":"real_name","status":"status","extra_attrs":"json_col"}',
@@ -391,7 +381,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
   ds: DataSourceView; mapping: SyncMapping | null; onClose: () => void; onSaved: () => void
 }) {
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<MappingForm>({
-    resolver: zodResolver(mappingSchema),
+    mode: 'onSubmit',
     defaultValues: {
       name: mapping?.name ?? '',
       targetEntity: mapping?.targetEntity ?? 'USER',
@@ -419,15 +409,19 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
     }
   }
 
+  const ENTITY_VALUES = ['USER', 'ROLE', 'PERMISSION', 'USER_ROLE', 'ROLE_PERMISSION']
+
   return (
     <Modal open title={mapping ? '编辑映射任务' : '新建映射任务'} onClose={onClose} wide>
       <form onSubmit={handleSubmit(submit)} className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
           <Field label="名称" required error={errors.name?.message}>
-            <TextInput {...register('name')} placeholder="如：HIS 用户同步" />
+            <TextInput {...register('name', { required: '请输入名称', maxLength: 100 })} placeholder="如：HIS 用户同步" />
           </Field>
-          <Field label="目标实体" required>
-            <Select {...register('targetEntity')} onChange={(e) => {
+          <Field label="目标实体" required error={errors.targetEntity?.message}>
+            <Select {...register('targetEntity', {
+              validate: (v) => ENTITY_VALUES.includes(v) || '请选择目标实体',
+            })} onChange={(e) => {
               const t = e.target.value as MappingForm['targetEntity']
               setValue('targetEntity', t)
               if (!mapping) setValue('fieldMapping', FIELD_MAPPING_HINT[t])
@@ -435,8 +429,10 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
               {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </Field>
-          <Field label="冲突策略">
-            <Select {...register('conflictStrategy')}>
+          <Field label="冲突策略" error={errors.conflictStrategy?.message}>
+            <Select {...register('conflictStrategy', {
+              validate: (v) => ['SYNC_OVERRIDE', 'NATIVE_PRIORITY', 'SKIP'].includes(v) || '请选择冲突策略',
+            })}>
               <option value="SYNC_OVERRIDE">同步覆盖</option>
               <option value="NATIVE_PRIORITY">原生优先</option>
               <option value="SKIP">跳过</option>
@@ -458,7 +454,20 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
         <Field label="字段映射（目标字段 → SQL 列，JSON）" required error={errors.fieldMapping?.message}
           hint={`external_key 必填（幂等键）。${targetEntity} 参考：${FIELD_MAPPING_HINT[targetEntity]}`}>
           <textarea
-            {...register('fieldMapping')}
+            {...register('fieldMapping', {
+              required: '请输入字段映射',
+              validate: (s) => {
+                try {
+                  const o = JSON.parse(s)
+                  if (typeof o !== 'object' || o === null || Array.isArray(o)) {
+                    return '必须是 JSON 对象'
+                  }
+                  return true
+                } catch {
+                  return '必须是合法 JSON'
+                }
+              },
+            })}
             rows={3}
             className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none"
           />
@@ -466,7 +475,14 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
 
         <div className="grid grid-cols-3 items-end gap-4">
           <Field label="批大小" error={errors.batchSize?.message}>
-            <TextInput {...register('batchSize')} type="number" />
+            <TextInput {...register('batchSize', {
+              setValueAs: (v) => {
+                if (v === '' || v === undefined || v === null) return 500
+                const n = Number(v)
+                if (Number.isNaN(n)) return 500
+                return Math.min(5000, Math.max(1, Math.round(n)))
+              },
+            })} type="number" />
           </Field>
           <Field label="启用">
             <Select {...register('enabled', { setValueAs: (v) => v === true || v === 'true' })}>
