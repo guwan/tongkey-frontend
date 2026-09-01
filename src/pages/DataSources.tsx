@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
@@ -15,6 +14,21 @@ import {
 
 const DB_TYPES = ['MYSQL', 'ORACLE', 'POSTGRESQL', 'MARIADB', 'SQLSERVER']
 const ENTITY_TYPES = ['USER', 'ROLE', 'PERMISSION', 'USER_ROLE', 'ROLE_PERMISSION']
+
+/* -------- 表单类型定义 -------- */
+type DsForm = {
+  name: string
+  dbType: string
+  jdbcUrl: string
+  username: string
+  password: string
+  enabled: boolean | string
+  scheduleCron: string
+  syncMode: string
+  incrementalColumn: string
+  connectTimeoutSeconds: number
+  notes: string
+}
 
 type Tab = 'list' | 'logs'
 
@@ -136,31 +150,11 @@ function DataSourceList({ onEdit, onDetail }: {
   )
 }
 
-/* ================= 数据源表单（React Hook Form + Zod，规格文档 3.1） ================= */
-
-const dsSchema = z.object({
-  name: z.string().min(1, '请输入名称').max(100, '不超过 100 字符'),
-  dbType: z.string().refine((v) => DB_TYPES.includes(v), { message: '请选择数据库类型' }),
-  jdbcUrl: z.string().min(1, '请输入 JDBC URL').max(500),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  enabled: z.boolean(),
-  scheduleCron: z.string().optional(),
-  syncMode: z.string().refine((v) => ['FULL', 'INCREMENTAL'].includes(v), { message: '请选择同步模式' }),
-  incrementalColumn: z.string().optional(),
-  connectTimeoutSeconds: z.coerce.number().transform((v) => {
-    if (Number.isNaN(v)) return 10
-    return Math.min(600, Math.max(1, v))
-  }),
-  notes: z.string().optional(),
-})
-
-type DsForm = z.infer<typeof dsSchema>
+/* ================= 数据源表单（React Hook Form 原生校验，规格文档 3.1） ================= */
 
 function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClose: () => void }) {
   const qc = useQueryClient()
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<DsForm>({
-    resolver: zodResolver(dsSchema),
     mode: 'onSubmit',
     defaultValues: {
       name: ds?.name ?? '',
@@ -211,16 +205,16 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
     <Modal open title={ds ? '编辑数据源' : '新建数据源'} onClose={onClose} wide>
       <form onSubmit={handleSubmit(submit)} className="grid grid-cols-2 gap-4">
         <Field label="名称" required error={errors.name?.message}>
-          <TextInput {...register('name')} placeholder="如：HIS 系统库" />
+          <TextInput {...register('name', { required: '请输入名称', maxLength: 100 })} placeholder="如：HIS 系统库" />
         </Field>
         <Field label="数据库类型" required error={errors.dbType?.message}>
-          <Select {...register('dbType')}>
+          <Select {...register('dbType', { validate: (v) => DB_TYPES.includes(v) || '请选择数据库类型' })}>
             {DB_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </Select>
         </Field>
         <div className="col-span-2">
           <Field label="JDBC URL" required error={errors.jdbcUrl?.message}>
-            <TextInput {...register('jdbcUrl')} placeholder="jdbc:mysql://host:3306/db" className="font-mono !text-xs" />
+            <TextInput {...register('jdbcUrl', { required: '请输入 JDBC URL', maxLength: 500 })} placeholder="jdbc:mysql://host:3306/db" className="font-mono !text-xs" />
           </Field>
         </div>
         <Field label="用户名">
@@ -231,7 +225,7 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
         </Field>
         <Field label="同步模式">
           <Select
-            {...register('syncMode')}
+            {...register('syncMode', { validate: (v) => ['FULL', 'INCREMENTAL'].includes(v) || '请选择同步模式' })}
             onChange={(e) => onSyncModeChange(e.target.value)}
           >
             <option value="FULL">全量</option>
@@ -241,7 +235,9 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
         <Field label="增量字段" error={errors.incrementalColumn?.message}
           hint={isIncremental ? '如 update_time；或在映射 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
           <TextInput
-            {...register('incrementalColumn')}
+            {...register('incrementalColumn', {
+              required: isIncremental && '增量模式需要填写增量字段',
+            })}
             disabled={!isIncremental}
             placeholder={isIncremental ? '如 update_time' : '切换到「增量」模式后可编辑'}
           />
@@ -250,7 +246,14 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
           <TextInput {...register('scheduleCron')} className="font-mono !text-xs" />
         </Field>
         <Field label="连接超时（秒）" error={errors.connectTimeoutSeconds?.message}>
-          <TextInput {...register('connectTimeoutSeconds')} type="number" />
+          <TextInput {...register('connectTimeoutSeconds', {
+            setValueAs: (v) => {
+              if (v === '' || v === undefined || v === null) return 10
+              const n = Number(v)
+              if (Number.isNaN(n)) return 10
+              return Math.min(600, Math.max(1, Math.round(n)))
+            },
+          })} type="number" />
         </Field>
         <div className="col-span-2">
           <Field label="备注">

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useState, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
 export function cls(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
@@ -56,17 +56,20 @@ export function Field({ label, required, error, children, hint }: {
   )
 }
 
-export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cls(inputCls, props.className)} />
-}
+export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  (props, ref) => <input ref={ref} {...props} className={cls(inputCls, props.className)} />
+)
+TextInput.displayName = 'TextInput'
 
-export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cls(inputCls, 'font-mono text-xs', props.className)} />
-}
+export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  (props, ref) => <textarea ref={ref} {...props} className={cls(inputCls, props.className)} />
+)
+TextArea.displayName = 'TextArea'
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cls(inputCls, props.className)} />
-}
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
+  (props, ref) => <select ref={ref} {...props} className={cls(inputCls, props.className)} />
+)
+Select.displayName = 'Select'
 
 export function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
