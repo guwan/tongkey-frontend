@@ -140,24 +140,25 @@ function DataSourceList({ onEdit, onDetail }: {
 
 const dsSchema = z.object({
   name: z.string().min(1, '请输入名称'),
-  dbType: z.enum(['MYSQL', 'ORACLE', 'POSTGRESQL', 'MARIADB', 'SQLSERVER']),
+  dbType: z.enum(['MYSQL', 'ORACLE', 'POSTGRESQL', 'MARIADB', 'SQLSERVER'], { errorMap: () => ({ message: '请选择数据库类型' }) }),
   jdbcUrl: z.string().min(1, '请输入 JDBC URL'),
-  username: z.string(),
-  password: z.string(),
+  username: z.string().optional().default(''),
+  password: z.string().optional().default(''),
   enabled: z.boolean(),
-  scheduleCron: z.string(),
+  scheduleCron: z.string().optional().default(''),
   syncMode: z.enum(['FULL', 'INCREMENTAL']),
-  incrementalColumn: z.string(),
-  connectTimeoutSeconds: z.coerce.number().min(1).max(600),
-  notes: z.string(),
+  incrementalColumn: z.string().optional().default(''),
+  connectTimeoutSeconds: z.coerce.number().transform((v) => Number.isNaN(v) ? 10 : v).min(1, '最小 1 秒').max(600, '最大 600 秒'),
+  notes: z.string().optional().default(''),
 })
 
 type DsForm = z.infer<typeof dsSchema>
 
 function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<DsForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<DsForm>({
     resolver: zodResolver(dsSchema),
+    mode: 'onChange',
     defaultValues: {
       name: ds?.name ?? '',
       dbType: ds?.dbType ?? 'MYSQL',
@@ -173,6 +174,13 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
     },
   })
   const syncMode = watch('syncMode')
+  const isIncremental = syncMode === 'INCREMENTAL'
+
+  const onSyncModeChange = (v: string) => {
+    setValue('syncMode', v as DsForm['syncMode'], { shouldValidate: true })
+    // 切换到全量时清空增量字段值；切换到增量时保留用户已填的值
+    if (v === 'FULL') setValue('incrementalColumn', '', { shouldValidate: false })
+  }
 
   const submit = async (form: DsForm) => {
     const body = {
@@ -219,14 +227,21 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
           <TextInput {...register('password')} type="password" autoComplete="new-password" />
         </Field>
         <Field label="同步模式">
-          <Select {...register('syncMode')}>
+          <Select
+            {...register('syncMode')}
+            onChange={(e) => onSyncModeChange(e.target.value)}
+          >
             <option value="FULL">全量</option>
             <option value="INCREMENTAL">增量</option>
           </Select>
         </Field>
         <Field label="增量字段" error={errors.incrementalColumn?.message}
-          hint={syncMode === 'INCREMENTAL' ? '如 update_time；或在映射 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
-          <TextInput {...register('incrementalColumn')} disabled={syncMode !== 'INCREMENTAL'} />
+          hint={isIncremental ? '如 update_time；或在映射 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
+          <TextInput
+            {...register('incrementalColumn')}
+            disabled={!isIncremental}
+            placeholder={isIncremental ? '如 update_time' : '切换到「增量」模式后可编辑'}
+          />
         </Field>
         <Field label="定时 Cron（可选）" hint="如 0 0/30 * * * * 每 30 分钟一次；留空则仅手动触发">
           <TextInput {...register('scheduleCron')} className="font-mono !text-xs" />

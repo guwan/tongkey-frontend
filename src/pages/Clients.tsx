@@ -245,6 +245,20 @@ function SecretModal({ data, onClose }: {
     navigator.clipboard.writeText(text)
     toast(`已复制 ${label}`)
   }
+
+  // 结构化 JSON 复制：包含 base URL + 完整凭证，方便对接方一键使用
+  const copyAll = () => {
+    const payload: Record<string, string> = {
+      client_id: data.clientId,
+      api_key: data.apiKey,
+    }
+    if (data.clientSecret) payload.client_secret = data.clientSecret
+    payload.base_url = `${window.location.origin}/api`
+    const text = JSON.stringify(payload, null, 2)
+    navigator.clipboard.writeText(text)
+    toast('已复制全部凭证（JSON 格式）')
+  }
+
   return (
     <Modal open title="接入凭证" onClose={onClose}>
       <div className="space-y-3">
@@ -260,7 +274,8 @@ function SecretModal({ data, onClose }: {
             <CredRow label="Client Secret" value={data.clientSecret} onCopy={() => copy(data.clientSecret, 'Client Secret')} />
           )}
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+          <Button variant="secondary" onClick={copyAll}>复制全部（JSON）</Button>
           <Button onClick={onClose}>我已保存</Button>
         </div>
       </div>
