@@ -139,30 +139,29 @@ function DataSourceList({ onEdit, onDetail }: {
 /* ================= 数据源表单（React Hook Form + Zod，规格文档 3.1） ================= */
 
 const dsSchema = z.object({
-  name: z.string().min(1, '请输入名称'),
-  dbType: z.enum(['MYSQL', 'ORACLE', 'POSTGRESQL', 'MARIADB', 'SQLSERVER'], { errorMap: () => ({ message: '请选择数据库类型' }) }),
-  jdbcUrl: z.string().min(1, '请输入 JDBC URL'),
-  username: z.string().optional().default(''),
-  password: z.string().optional().default(''),
+  name: z.string().min(1, '请输入名称').max(100, '不超过 100 字符'),
+  dbType: z.string().refine((v) => DB_TYPES.includes(v), { message: '请选择数据库类型' }),
+  jdbcUrl: z.string().min(1, '请输入 JDBC URL').max(500),
+  username: z.string().optional(),
+  password: z.string().optional(),
   enabled: z.boolean(),
-  scheduleCron: z.string().optional().default(''),
-  syncMode: z.enum(['FULL', 'INCREMENTAL']),
-  incrementalColumn: z.string().optional().default(''),
+  scheduleCron: z.string().optional(),
+  syncMode: z.string().refine((v) => ['FULL', 'INCREMENTAL'].includes(v), { message: '请选择同步模式' }),
+  incrementalColumn: z.string().optional(),
   connectTimeoutSeconds: z.coerce.number().transform((v) => {
     if (Number.isNaN(v)) return 10
     return Math.min(600, Math.max(1, v))
   }),
-  notes: z.string().optional().default(''),
+  notes: z.string().optional(),
 })
 
 type DsForm = z.infer<typeof dsSchema>
 
 function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isDirty, touchedFields } } = useForm<DsForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<DsForm>({
     resolver: zodResolver(dsSchema),
-    mode: 'onTouched',
-    reValidateMode: 'onChange',
+    mode: 'onSubmit',
     defaultValues: {
       name: ds?.name ?? '',
       dbType: ds?.dbType ?? 'MYSQL',
