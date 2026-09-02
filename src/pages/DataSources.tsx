@@ -23,8 +23,6 @@ type DsForm = {
   password: string
   enabled: boolean | string
   scheduleCron: string
-  syncMode: string
-  incrementalColumn: string
   connectTimeoutSeconds: number
   notes: string
 }
@@ -124,7 +122,6 @@ function DataSourceList({ onEdit, onDetail }: {
               </div>
             ),
           },
-          { title: '模式', render: (d: DataSourceView) => <Badge color={d.syncMode === 'INCREMENTAL' ? 'amber' : 'slate'}>{d.syncMode === 'INCREMENTAL' ? '增量' : '全量'}</Badge> },
           { title: '定时', render: (d: DataSourceView) => <span className="font-mono text-xs">{d.scheduleCron || '-'}</span> },
           { title: '状态', render: (d: DataSourceView) => <StatusBadge ok={d.enabled} /> },
           {
@@ -153,7 +150,7 @@ function DataSourceList({ onEdit, onDetail }: {
 
 function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<DsForm>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DsForm>({
     mode: 'onSubmit',
     defaultValues: {
       name: ds?.name ?? '',
@@ -163,26 +160,15 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
       password: '',
       enabled: ds?.enabled ?? true,
       scheduleCron: ds?.scheduleCron ?? '',
-      syncMode: ds?.syncMode ?? 'FULL',
-      incrementalColumn: ds?.incrementalColumn ?? '',
       connectTimeoutSeconds: ds?.connectTimeoutSeconds ?? 10,
       notes: ds?.notes ?? '',
     },
   })
-  const syncMode = watch('syncMode')
-  const isIncremental = syncMode === 'INCREMENTAL'
-
-  const onSyncModeChange = (v: string) => {
-    setValue('syncMode', v as DsForm['syncMode'], { shouldValidate: true })
-    // 切换到全量时清空增量字段值；切换到增量时保留用户已填的值
-    if (v === 'FULL') setValue('incrementalColumn', '', { shouldValidate: false })
-  }
 
   const submit = async (form: DsForm) => {
     const body = {
       ...form,
       scheduleCron: form.scheduleCron.trim() || null,
-      incrementalColumn: form.incrementalColumn.trim() || null,
       notes: form.notes.trim() || null,
       password: form.password.trim() || undefined, // 编辑时空密码表示保持原值
     }
@@ -221,25 +207,6 @@ function DataSourceFormModal({ ds, onClose }: { ds: DataSourceView | null; onClo
         </Field>
         <Field label="密码" hint={ds ? '留空表示保持原密码（加密存储，页面永不明文展示）' : '加密存储'}>
           <TextInput {...register('password')} type="password" autoComplete="new-password" />
-        </Field>
-        <Field label="同步模式">
-          <Select
-            {...register('syncMode', { validate: (v) => ['FULL', 'INCREMENTAL'].includes(v) || '请选择同步模式' })}
-            onChange={(e) => onSyncModeChange(e.target.value)}
-          >
-            <option value="FULL">全量</option>
-            <option value="INCREMENTAL">增量</option>
-          </Select>
-        </Field>
-        <Field label="增量字段" error={errors.incrementalColumn?.message}
-          hint={isIncremental ? '如 update_time；或在映射 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
-          <TextInput
-            {...register('incrementalColumn', {
-              required: isIncremental && '增量模式需要填写增量字段',
-            })}
-            disabled={!isIncremental}
-            placeholder={isIncremental ? '如 update_time' : '切换到「增量」模式后可编辑'}
-          />
         </Field>
         <Field label="定时 Cron（可选）" hint="如 0 0/30 * * * * 每 30 分钟一次；留空则仅手动触发">
           <TextInput {...register('scheduleCron')} className="font-mono !text-xs" />
@@ -319,6 +286,7 @@ function DataSourceDetail({ ds, onClose }: { ds: DataSourceView; onClose: () => 
           columns={[
             { title: '名称', render: (m: SyncMapping) => <span className="font-medium">{m.name}</span> },
             { title: '目标实体', render: (m: SyncMapping) => <Badge color="purple">{m.targetEntity}</Badge> },
+            { title: '模式', render: (m: SyncMapping) => <Badge color={m.syncMode === 'INCREMENTAL' ? 'amber' : 'slate'}>{m.syncMode === 'INCREMENTAL' ? `增量 (${m.incrementalColumn ?? '?'})` : '全量'}</Badge> },
             { title: '冲突策略', render: (m: SyncMapping) => <span className="text-xs">{conflictLabel(m.conflictStrategy)}</span> },
             { title: '增量水位', render: (m: SyncMapping) => <span className="font-mono text-xs">{m.lastSyncValue ?? '-'}</span> },
             { title: '状态', render: (m: SyncMapping) => <StatusBadge ok={m.enabled} /> },
@@ -367,6 +335,8 @@ type MappingForm = {
   conflictStrategy: string
   batchSize: number
   enabled: boolean | string
+  syncMode: string
+  incrementalColumn: string
 }
 
 type EntityFieldDef = { key: string; label: string; required: boolean; desc?: string }
@@ -487,10 +457,14 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
       conflictStrategy: mapping?.conflictStrategy ?? 'SYNC_OVERRIDE',
       batchSize: mapping?.batchSize ?? 500,
       enabled: mapping?.enabled ?? true,
+      syncMode: mapping?.syncMode ?? 'FULL',
+      incrementalColumn: mapping?.incrementalColumn ?? '',
     },
   })
   const sqlText = watch('sqlText')
   const targetEntity = watch('targetEntity')
+  const syncMode = watch('syncMode')
+  const isIncremental = syncMode === 'INCREMENTAL'
 
   // 内部状态
   const [sqlColumns, setSqlColumns] = useState<string[]>([])
@@ -553,7 +527,11 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
       toast(`请先完成必填字段映射：${missingReq.map((f) => f.key).join(', ')}`, 'error')
       return
     }
-    const payload: MappingForm = { ...form, fieldMapping: JSON.stringify(mappingObj) }
+    const payload: MappingForm = {
+      ...form,
+      fieldMapping: JSON.stringify(mappingObj),
+      incrementalColumn: form.incrementalColumn.trim() || null,
+    }
     try {
       if (mapping) {
         await dataSourceApi.updateMapping(mapping.id, payload)
@@ -720,7 +698,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
           </div>
         </Field>
 
-        <div className="grid grid-cols-3 items-end gap-4">
+        <div className="grid grid-cols-2 items-end gap-4">
           <Field label="批大小" error={errors.batchSize?.message}>
             <TextInput {...register('batchSize', {
               setValueAs: (v) => {
@@ -731,16 +709,32 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
               },
             })} type="number" />
           </Field>
+          <Field label="同步模式">
+            <Select {...register('syncMode', { validate: (v) => ['FULL', 'INCREMENTAL'].includes(v) || '请选择同步模式' })}>
+              <option value="FULL">全量</option>
+              <option value="INCREMENTAL">增量</option>
+            </Select>
+          </Field>
+          <Field label="增量字段" error={errors.incrementalColumn?.message}
+            hint={isIncremental ? '如 UPDATE_ON；或在 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
+            <TextInput
+              {...register('incrementalColumn', {
+                required: isIncremental ? '增量模式需要填写增量字段' : undefined,
+              })}
+              disabled={!isIncremental}
+              placeholder={isIncremental ? '如 UPDATE_ON' : '切换到「增量」模式后可编辑'}
+            />
+          </Field>
           <Field label="启用">
             <Select {...register('enabled', { setValueAs: (v) => v === true || v === 'true' })}>
               <option value="true">启用</option>
               <option value="false">停用</option>
             </Select>
           </Field>
-          <div className="flex justify-end gap-2 pb-1">
-            <Button variant="secondary" onClick={onClose}>取消</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? '保存中…' : '保存'}</Button>
-          </div>
+        </div>
+        <div className="flex justify-end gap-2 pb-1">
+          <Button variant="secondary" onClick={onClose}>取消</Button>
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? '保存中…' : '保存'}</Button>
         </div>
       </form>
     </Modal>

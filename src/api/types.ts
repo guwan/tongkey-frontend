@@ -74,8 +74,6 @@ export interface DataSourceView {
   username: string | null
   enabled: boolean
   scheduleCron: string | null
-  syncMode: SyncMode
-  incrementalColumn: string | null
   connectTimeoutSeconds: number
   notes: string | null
   createdAt: string
@@ -92,6 +90,8 @@ export interface SyncMapping {
   conflictStrategy: ConflictStrategy
   batchSize: number
   enabled: boolean
+  syncMode: SyncMode
+  incrementalColumn: string | null
   lastSyncValue: string | null
   createdAt: string
   updatedAt: string
