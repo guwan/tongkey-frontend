@@ -50,7 +50,7 @@ export default function OpenApi() {
           rows={[
             ['开发环境', <Code>{BASE}</Code>],
             ['API 根路径', <Code>/api/v1</Code>],
-            ['鉴权方式', <Code>X-API-Key</Code> 请求头，可选 HMAC-SHA256 签名防重放],
+            ['鉴权方式', <><Code>X-API-Key</Code> 请求头，可选 HMAC-SHA256 签名防重放</>],
             ['数据格式', 'application/json（UTF-8）'],
             ['时间格式', 'epoch 毫秒（UTC）'],
           ]}
