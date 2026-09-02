@@ -40,11 +40,11 @@ export function Button({
 const inputCls =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
-export function Field({ label, required, error, children, hint }: {
-  label: ReactNode; required?: boolean; error?: string; children: ReactNode; hint?: string
+export function Field({ label, required, error, children, hint, className }: {
+  label: ReactNode; required?: boolean; error?: string; children: ReactNode; hint?: string; className?: string
 }) {
   return (
-    <div className="block">
+    <div className={cls('block', className)}>
       <span className="mb-1 block text-sm font-medium text-slate-700">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}

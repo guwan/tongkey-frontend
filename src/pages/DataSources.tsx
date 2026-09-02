@@ -533,8 +533,8 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
     const payload: MappingForm = {
       ...form,
       fieldMapping: JSON.stringify(mappingObj),
-      incrementalColumn: form.incrementalColumn.trim() || null,
-      scheduleCron: form.scheduleCron.trim() || null,
+      incrementalColumn: form.incrementalColumn.trim() || '',
+      scheduleCron: form.scheduleCron.trim() || '',
     }
     try {
       if (mapping) {
