@@ -138,7 +138,7 @@ export default function OpenApi() {
             ['username', 'string', '✅', '登录名，全局唯一', <Code>'zhangsan'</Code>],
             ['displayName', 'string', '❌', '显示名', <Code>'张三'</Code>],
             ['status', 'string', '❌', 'ACTIVE / DISABLED / LOCKED', <Code>'ACTIVE'</Code>],
-            ['extraAttrs', 'string', '❌', '扩展属性 JSON 字符串', <Code>'{"org":"医院信息科"}'</Code>],
+            ['extraAttrs', 'string', '❌', '扩展属性 JSON 字符串', <Code>{'{"org":"医院信息科"}'}</Code>],
             ['externalKey', 'string', '❌', '第三方系统的用户唯一标识，用于幂等 upsert', <Code>'HIS_USER_10086'</Code>],
           ]}
         />
