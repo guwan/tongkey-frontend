@@ -7,11 +7,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/console': 'http://localhost:8080',
-      '/api': 'http://localhost:8080',
-      '/v3': 'http://localhost:8080',
-      '/swagger-ui': 'http://localhost:8080',
-      '/actuator': 'http://localhost:8080',
+      '/console': 'http://localhost:8180',
+      '/api': 'http://localhost:8180',
+      '/v3': 'http://localhost:8180',
+      '/swagger-ui': 'http://localhost:8180',
+      '/actuator': 'http://localhost:8180',
     },
   },
 })
