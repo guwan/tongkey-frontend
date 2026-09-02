@@ -41,10 +41,10 @@ const inputCls =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
 export function Field({ label, required, error, children, hint }: {
-  label: string; required?: boolean; error?: string; children: ReactNode; hint?: string
+  label: ReactNode; required?: boolean; error?: string; children: ReactNode; hint?: string
 }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
@@ -52,7 +52,7 @@ export function Field({ label, required, error, children, hint }: {
       {children}
       {hint && !error && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
       {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
-    </label>
+    </div>
   )
 }
 
