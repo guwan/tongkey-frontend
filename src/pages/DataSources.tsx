@@ -288,6 +288,7 @@ function DataSourceDetail({ ds, onClose }: { ds: DataSourceView; onClose: () => 
             { title: '目标实体', render: (m: SyncMapping) => <Badge color="purple">{m.targetEntity}</Badge> },
             { title: '模式', render: (m: SyncMapping) => <Badge color={m.syncMode === 'INCREMENTAL' ? 'amber' : 'slate'}>{m.syncMode === 'INCREMENTAL' ? `增量 (${m.incrementalColumn ?? '?'})` : '全量'}</Badge> },
             { title: '冲突策略', render: (m: SyncMapping) => <span className="text-xs">{conflictLabel(m.conflictStrategy)}</span> },
+            { title: '定时', render: (m: SyncMapping) => m.scheduleCron ? <span className="font-mono text-xs text-blue-600">{m.scheduleCron}</span> : <span className="text-xs text-slate-400">-</span> },
             { title: '增量水位', render: (m: SyncMapping) => <span className="font-mono text-xs">{m.lastSyncValue ?? '-'}</span> },
             { title: '状态', render: (m: SyncMapping) => <StatusBadge ok={m.enabled} /> },
             {
@@ -337,6 +338,7 @@ type MappingForm = {
   enabled: boolean | string
   syncMode: string
   incrementalColumn: string
+  scheduleCron: string
 }
 
 type EntityFieldDef = { key: string; label: string; required: boolean; desc?: string }
@@ -459,6 +461,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
       enabled: mapping?.enabled ?? true,
       syncMode: mapping?.syncMode ?? 'FULL',
       incrementalColumn: mapping?.incrementalColumn ?? '',
+      scheduleCron: mapping?.scheduleCron ?? '',
     },
   })
   const sqlText = watch('sqlText')
@@ -531,6 +534,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
       ...form,
       fieldMapping: JSON.stringify(mappingObj),
       incrementalColumn: form.incrementalColumn.trim() || null,
+      scheduleCron: form.scheduleCron.trim() || null,
     }
     try {
       if (mapping) {
@@ -698,7 +702,7 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
           </div>
         </Field>
 
-        <div className="grid grid-cols-2 items-end gap-4">
+        <div className="grid grid-cols-3 items-end gap-4">
           <Field label="批大小" error={errors.batchSize?.message}>
             <TextInput {...register('batchSize', {
               setValueAs: (v) => {
@@ -715,6 +719,12 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
               <option value="INCREMENTAL">增量</option>
             </Select>
           </Field>
+          <Field label="启用">
+            <Select {...register('enabled', { setValueAs: (v) => v === true || v === 'true' })}>
+              <option value="true">启用</option>
+              <option value="false">停用</option>
+            </Select>
+          </Field>
           <Field label="增量字段" error={errors.incrementalColumn?.message}
             hint={isIncremental ? '如 UPDATE_ON；或在 SQL 中使用 :lastSyncTime 占位符' : '仅增量模式需要'}>
             <TextInput
@@ -725,11 +735,8 @@ function MappingFormModal({ ds, mapping, onClose, onSaved }: {
               placeholder={isIncremental ? '如 UPDATE_ON' : '切换到「增量」模式后可编辑'}
             />
           </Field>
-          <Field label="启用">
-            <Select {...register('enabled', { setValueAs: (v) => v === true || v === 'true' })}>
-              <option value="true">启用</option>
-              <option value="false">停用</option>
-            </Select>
+          <Field label="定时 Cron（可选）" hint="如 0 0/30 * * * * 每 30 分钟一次；留空则跟随数据源调度或仅手动触发" className="col-span-2">
+            <TextInput {...register('scheduleCron')} className="font-mono !text-xs" placeholder="0 0/30 * * * *" />
           </Field>
         </div>
         <div className="flex justify-end gap-2 pb-1">

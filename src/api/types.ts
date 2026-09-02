@@ -92,6 +92,7 @@ export interface SyncMapping {
   enabled: boolean
   syncMode: SyncMode
   incrementalColumn: string | null
+  scheduleCron: string | null
   lastSyncValue: string | null
   createdAt: string
   updatedAt: string
