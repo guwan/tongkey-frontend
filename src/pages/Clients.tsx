@@ -8,13 +8,19 @@ import {
   StatusBadge, Table, TextInput, cls, toast,
 } from '../components/ui'
 
-const SCOPE_OPTIONS = [
-  'user:read', 'user:write',
-  'role:read', 'role:write',
-  'permission:read', 'permission:write',
-  'user_role:write', 'role_permission:write',
-  'change:read',
-]
+const SCOPE_LABELS: Record<string, string> = {
+  'user:read': '用户-读取',
+  'user:write': '用户-写入',
+  'role:read': '角色-读取',
+  'role:write': '角色-写入',
+  'permission:read': '权限-读取',
+  'permission:write': '权限-写入',
+  'user_role:write': '用户角色-关联',
+  'role_permission:write': '角色权限-关联',
+  'change:read': '变更日志-读取',
+  'sync:run': '同步-触发',
+}
+const SCOPE_OPTIONS = Object.keys(SCOPE_LABELS)
 
 export default function Clients() {
   const [tab, setTab] = useState<'clients' | 'logs'>('clients')
@@ -114,7 +120,7 @@ function ClientList({ onEdit, onSecret }: {
             title: '权限（scopes）',
             render: (c: ClientView) => (
               <div className="flex max-w-xs flex-wrap gap-1">
-                {c.scopes.split(',').filter(Boolean).map((s) => <Badge key={s} color="blue">{s}</Badge>)}
+                {c.scopes.split(',').filter(Boolean).map((s) => <Badge key={s} color="blue">{SCOPE_LABELS[s] ?? s}</Badge>)}
               </div>
             ),
           },
@@ -199,11 +205,12 @@ function ClientFormModal({ client, onClose, onCreated }: {
           <span className="mb-1 block text-sm font-medium text-slate-700">
             接口权限（scopes）<span className="ml-1 text-xs font-normal text-slate-400">按需最小化授权</span>
           </span>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {SCOPE_OPTIONS.map((s) => (
-              <label key={s} className="flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 px-2 py-1.5 font-mono text-xs hover:bg-slate-50">
+              <label key={s} className="flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 px-2 py-1.5 text-xs hover:bg-slate-50">
                 <input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={scopes.includes(s)} onChange={() => toggleScope(s)} />
-                {s}
+                <span className="text-slate-700">{SCOPE_LABELS[s]}</span>
+                <span className="font-mono text-[10px] text-slate-400">{s}</span>
               </label>
             ))}
           </div>
