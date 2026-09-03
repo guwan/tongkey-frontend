@@ -97,7 +97,7 @@ export const clientApi = {
   create: (body: unknown) => post<{ client: ClientView; clientSecret: string; warning: string }>('/console/clients', body),
   update: (id: string, body: unknown) => put<ClientView>(`/console/clients/${id}`, body),
   remove: (id: string) => del<void>(`/console/clients/${id}`),
-  resetKey: (id: string) => post<{ clientId: string; apiKey: string }>(`/console/clients/${id}/reset-key`),
+  resetKey: (id: string) => post<{ clientId: string; apiKey: string; clientSecret: string }>(`/console/clients/${id}/reset-key`),
   accessLogs: (clientId?: string, page = 0, size = 20) =>
     get<PageData<ApiAccessLog>>(`/console/clients/access-logs${q({ clientId, page, size })}`),
 }

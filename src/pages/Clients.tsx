@@ -81,7 +81,7 @@ function ClientList({ onEdit, onSecret }: {
     mutationFn: (id: string) => clientApi.resetKey(id),
     onSuccess: (d) => {
       toast('API Key 已重置，旧 Key 立即失效')
-      onSecret({ clientId: d.clientId, apiKey: d.apiKey, clientSecret: '' })
+      onSecret({ clientId: d.clientId, apiKey: d.apiKey, clientSecret: d.clientSecret })
       invalidate()
     },
     onError: (e: Error) => toast(e.message, 'error'),
