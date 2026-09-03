@@ -24,7 +24,7 @@ export default function WebhookSpec() {
     "id": "3f2a6b1c-...",
     "username": "zhangsan",
     "displayName": "张三",
-    "status": "ACTIVE",
+    "status": "ENABLED",
     "sourceType": "SYNCED"
   },
   "timestamp": "2026-08-28T03:15:42.123Z"

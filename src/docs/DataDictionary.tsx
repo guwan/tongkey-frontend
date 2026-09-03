@@ -10,7 +10,7 @@ export const DATA_DICTIONARY = {
         { name: 'id', type: 'string(uuid)', required: true, zh: '主键', en: 'Primary key', example: '3f2a...' },
         { name: 'username', type: 'string', required: true, zh: '用户名（唯一）', en: 'Login name, unique', example: 'zhangsan' },
         { name: 'displayName', type: 'string', required: false, zh: '显示名', en: 'Display name', example: '张三' },
-        { name: 'status', type: 'enum(ACTIVE|DISABLED)', required: true, zh: '状态', en: 'Status', example: 'ACTIVE' },
+        { name: 'status', type: 'enum(ENABLED|DISABLED)', required: true, zh: '状态', en: 'Status', example: 'ENABLED' },
         { name: 'sourceType', type: 'enum(NATIVE|SYNCED|API)', required: true, zh: '数据来源', en: 'Data origin', example: 'SYNCED' },
         { name: 'sourceId', type: 'string', required: false, zh: '来源标识（数据源 id / client_id）', en: 'Origin identifier', example: 'ds-001' },
         { name: 'externalKey', type: 'string', required: false, zh: '外部幂等键（同步/写入方提供）', en: 'External idempotency key', example: 'EMP0001' },

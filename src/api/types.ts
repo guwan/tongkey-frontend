@@ -2,7 +2,7 @@
 
 export type EntityType = 'USER' | 'ROLE' | 'PERMISSION'
 export type SourceType = 'NATIVE' | 'SYNCED' | 'API'
-export type EntityStatus = 'ACTIVE' | 'DISABLED'
+export type EntityStatus = 'ENABLED' | 'DISABLED'
 export type ResourceType = 'MENU' | 'BUTTON' | 'API' | 'DATA' | 'OTHER'
 export type ChangeAction = 'CREATE' | 'UPDATE' | 'DELETE'
 export type DbType = 'MYSQL' | 'ORACLE' | 'POSTGRESQL' | 'MARIADB' | 'SQLSERVER'

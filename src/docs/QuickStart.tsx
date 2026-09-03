@@ -23,7 +23,7 @@ export default function QuickStart() {
   "data": {
     "items": [
       { "id": "...", "username": "zhangsan", "displayName": "张三",
-        "status": "ACTIVE", "sourceType": "SYNCED" }
+        "status": "ENABLED", "sourceType": "SYNCED" }
     ],
     "total": 1, "page": 0, "size": 20
   },

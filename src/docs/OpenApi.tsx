@@ -137,7 +137,7 @@ export default function OpenApi() {
           rows={[
             ['username', 'string', '✅', '登录名，全局唯一', <Code>'zhangsan'</Code>],
             ['displayName', 'string', '❌', '显示名', <Code>'张三'</Code>],
-            ['status', 'string', '❌', 'ACTIVE / DISABLED / LOCKED', <Code>'ACTIVE'</Code>],
+            ['status', 'string', '❌', 'ENABLED / DISABLED', <Code>'ENABLED'</Code>],
             ['extraAttrs', 'string', '❌', '扩展属性 JSON 字符串', <Code>{'{"org":"医院信息科"}'}</Code>],
             ['externalKey', 'string', '❌', '第三方系统的用户唯一标识，用于幂等 upsert', <Code>'HIS_USER_10086'</Code>],
           ]}
@@ -147,7 +147,7 @@ export default function OpenApi() {
           json={`{
   "username": "zhangsan",
   "displayName": "张三",
-  "status": "ACTIVE",
+  "status": "ENABLED",
   "externalKey": "HIS_USER_10086",
   "extraAttrs": "{\\"org\\":\\"医院信息科\\"}"
 }`}
@@ -159,7 +159,7 @@ export default function OpenApi() {
   -d '{
     "username": "zhangsan",
     "displayName": "张三",
-    "status": "ACTIVE",
+    "status": "ENABLED",
     "externalKey": "HIS_USER_10086"
   }'`}
         />
@@ -169,7 +169,7 @@ export default function OpenApi() {
   "id": "3f2a6b1c-4e5d-7890-abcd-ef1234567890",
   "username": "zhangsan",
   "displayName": "张三",
-  "status": "ACTIVE",
+  "status": "ENABLED",
   "sourceType": "API",
   "sourceId": null,
   "externalKey": "HIS_USER_10086",
@@ -194,8 +194,8 @@ export default function OpenApi() {
         <Json
           title="请求体"
           json={`[
-  { "username": "lisi", "displayName": "李四", "externalKey": "HIS_USER_10087", "status": "ACTIVE" },
-  { "username": "wangwu", "displayName": "王五", "externalKey": "HIS_USER_10088", "status": "ACTIVE" }
+  { "username": "lisi", "displayName": "李四", "externalKey": "HIS_USER_10087", "status": "ENABLED" },
+  { "username": "wangwu", "displayName": "王五", "externalKey": "HIS_USER_10088", "status": "ENABLED" }
 ]`}
         />
 
@@ -208,11 +208,11 @@ export default function OpenApi() {
             ['size', 'query', 'int', '每页条数，默认 20，最大 100', <Code>50</Code>],
             ['keyword', 'query', 'string', '模糊匹配 username 或 displayName', <Code>'张'</Code>],
             ['sourceType', 'query', 'enum', 'SYNCED / API / CONSOLE', <Code>'SYNCED'</Code>],
-            ['status', 'query', 'enum', 'ACTIVE / DISABLED / LOCKED', <Code>'ACTIVE'</Code>],
+            ['status', 'query', 'enum', 'ENABLED / DISABLED', <Code>'ENABLED'</Code>],
           ]}
         />
         <Curl
-          curl={`curl -X GET "${BASE}/api/v1/users?page=0&size=20&sourceType=SYNCED&status=ACTIVE" \\
+          curl={`curl -X GET "${BASE}/api/v1/users?page=0&size=20&sourceType=SYNCED&status=ENABLED" \\
   -H "X-API-Key: YOUR_API_KEY"`}
         />
 
@@ -371,7 +371,7 @@ curl -X GET "${BASE}/api/v1/changes?since=1756771200000&entity=USER&size=100" \\
           headers={['枚举', '可选值']}
           rows={[
             ['EntityType', <span><Code>USER</Code>, <Code>ROLE</Code>, <Code>PERMISSION</Code>, <Code>USER_ROLE</Code>, <Code>ROLE_PERMISSION</Code></span>],
-            ['EntityStatus', <span><Code>ACTIVE</Code>, <Code>DISABLED</Code>, <Code>LOCKED</Code></span>],
+            ['EntityStatus', <span><Code>ENABLED</Code>, <Code>DISABLED</Code></span>],
             ['SourceType', <span><Code>SYNCED</Code>（数据源同步）, <Code>API</Code>（开放 API）, <Code>CONSOLE</Code>（控制台手动）</span>],
             ['ResourceType', <span><Code>USER</Code>, <Code>ROLE</Code>, <Code>PERMISSION</Code>, <Code>MENU</Code>, <Code>API</Code>, <Code>DATA</Code></span>],
             ['ChangeAction', <span><Code>CREATE</Code>, <Code>UPDATE</Code>, <Code>DELETE</Code></span>],
@@ -390,7 +390,7 @@ API_KEY = "tk_your_api_key_here"
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 # 幂等 upsert 用户
-def upsert_user(username, display_name, external_key, status="ACTIVE"):
+def upsert_user(username, display_name, external_key, status="ENABLED"):
     resp = requests.post(f"{BASE}/users", headers=HEADERS, json={
         "username": username,
         "displayName": display_name,

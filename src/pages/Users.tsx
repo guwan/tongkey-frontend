@@ -58,7 +58,7 @@ export default function Users() {
           </Select>
           <Select className="!w-32" value={status} onChange={(e) => { setStatus(e.target.value); setPage(0) }}>
             <option value="">全部状态</option>
-            <option value="ACTIVE">启用</option>
+            <option value="ENABLED">启用</option>
             <option value="DISABLED">停用</option>
           </Select>
         </div>
@@ -75,7 +75,7 @@ export default function Users() {
                 { title: '用户名', render: (u: UserView) => <span className="font-medium">{u.username}</span> },
                 { title: '显示名', render: (u: UserView) => u.displayName ?? '-' },
                 { title: '来源', render: (u: UserView) => <SourceBadge sourceType={u.sourceType} /> },
-                { title: '状态', render: (u: UserView) => <StatusBadge ok={u.status === 'ACTIVE'} /> },
+                { title: '状态', render: (u: UserView) => <StatusBadge ok={u.status === 'ENABLED'} /> },
                 { title: 'externalKey', render: (u: UserView) => <span className="font-mono text-xs">{u.externalKey ?? '-'}</span> },
                 { title: '更新时间', render: (u: UserView) => fmtTime(u.updatedAt) },
                 { title: '更新人', render: (u: UserView) => u.updatedBy ?? '-' },
@@ -113,7 +113,7 @@ export default function Users() {
 function UserFormModal({ user, onClose, onSaved }: { user: UserView | null; onClose: () => void; onSaved: () => void }) {
   const [username, setUsername] = useState(user?.username ?? '')
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
-  const [status, setStatus] = useState<string>(user?.status ?? 'ACTIVE')
+  const [status, setStatus] = useState<string>(user?.status ?? 'ENABLED')
   const [extraAttrs, setExtraAttrs] = useState(user?.extraAttrs ?? '')
   const [saving, setSaving] = useState(false)
 
@@ -149,7 +149,7 @@ function UserFormModal({ user, onClose, onSaved }: { user: UserView | null; onCl
         </Field>
         <Field label="状态">
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="ACTIVE">启用</option>
+            <option value="ENABLED">启用</option>
             <option value="DISABLED">停用</option>
           </Select>
         </Field>
