@@ -4,7 +4,7 @@ import { clientApi } from '../api'
 import { fmtTime } from '../api/client'
 import type { ApiAccessLog, ClientView } from '../api/types'
 import {
-  Badge, Button, Card, Checkbox, ErrorBlock, Field, Loading, Modal, Pagination, Select,
+  Badge, Button, Card, Checkbox, copyToClipboard, ErrorBlock, Field, Loading, Modal, Pagination, Select,
   StatusBadge, Table, TextInput, cls, toast,
 } from '../components/ui'
 
@@ -104,7 +104,7 @@ function ClientList({ onEdit, onSecret }: {
               <button
                 className="font-mono text-xs text-blue-600 hover:underline"
                 title="点击复制"
-                onClick={() => { navigator.clipboard.writeText(c.apiKey); toast('已复制 API Key') }}
+                onClick={async () => { await copyToClipboard(c.apiKey); toast('已复制 API Key') }}
               >
                 {c.apiKey.slice(0, 12)}…
               </button>
@@ -241,13 +241,13 @@ function SecretModal({ data, onClose }: {
   data: { clientId: string; apiKey: string; clientSecret: string }
   onClose: () => void
 }) {
-  const copy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
+  const copy = async (text: string, label: string) => {
+    await copyToClipboard(text)
     toast(`已复制 ${label}`)
   }
 
   // 结构化 JSON 复制：包含 base URL + 完整凭证，方便对接方一键使用
-  const copyAll = () => {
+  const copyAll = async () => {
     const payload: Record<string, string> = {
       client_id: data.clientId,
       api_key: data.apiKey,
@@ -255,7 +255,7 @@ function SecretModal({ data, onClose }: {
     if (data.clientSecret) payload.client_secret = data.clientSecret
     payload.base_url = `${window.location.origin}/api`
     const text = JSON.stringify(payload, null, 2)
-    navigator.clipboard.writeText(text)
+    await copyToClipboard(text)
     toast('已复制全部凭证（JSON 格式）')
   }
 

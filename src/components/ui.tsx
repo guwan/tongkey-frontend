@@ -4,6 +4,29 @@ export function cls(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
 }
 
+/** 跨环境剪贴板（优先 navigator.clipboard，HTTP + LAN IP 下回退到 execCommand）。 */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch { /* 继续走 fallback */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 /* ---------------- 按钮 ---------------- */
 export function Button({
   children, onClick, variant = 'primary', type = 'button', disabled, size = 'md', title,
