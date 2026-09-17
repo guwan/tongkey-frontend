@@ -50,7 +50,7 @@ export default function OpenApi() {
           rows={[
             ['开发环境', <Code>{BASE}</Code>],
             ['API 根路径', <Code>/api/v1</Code>],
-            ['鉴权方式', <><Code>X-API-Key</Code> 请求头，可选 HMAC-SHA256 签名防重放</>],
+            ['鉴权方式', <><Code>X-API-Key</Code> 请求头 或 <Code>Authorization: Bearer</Code>（<a href="/docs/oauth2" className="text-blue-600 hover:underline">OAuth2 授权码登录</a>）；可选 HMAC-SHA256 签名防重放</>],
             ['数据格式', 'application/json（UTF-8）'],
             ['时间格式', 'epoch 毫秒（UTC）'],
           ]}
@@ -63,7 +63,10 @@ export default function OpenApi() {
           1. 在管理控制台「开放 API」页创建接入方，获取 <Code>apiKey</Code>（以 <Code>tk_</Code> 开头）
           和 <Code>clientSecret</Code>（仅创建时显示一次）。<br />
           2. 每次请求携带 <Code>X-API-Key: tk_xxx</Code> 请求头。<br />
-          3. 如果接入方开启了 <Code>requireSignature=true</Code>，还需额外计算签名并附加到请求头。
+          3. 如果接入方开启了 <Code>requireSignature=true</Code>，还需额外计算签名并附加到请求头。<br />
+          4. 除 API Key 外，也支持 <Code>Authorization: Bearer &lt;access_token&gt;</Code>
+          调用，令牌通过 <a href="/docs/oauth2" className="text-blue-600 hover:underline">OAuth 2.0 授权码流程</a>
+          由 TongKey 用户登录授权获得，两种通道等价，Bearer 通道无需额外 HMAC 签名。
         </p>
         <DocTable
           headers={['请求头', '说明', '是否必填']}
@@ -122,6 +125,8 @@ export default function OpenApi() {
             [<Code>permission:read</Code>, 'GET /permissions, GET /permissions/{id}'],
             [<Code>permission:write</Code>, 'POST /permissions, PUT /permissions/{id}'],
             [<Code>change:read</Code>, 'GET /changes'],
+            [<Code>sync:run</Code>, 'POST /sync/mappings/{id}/run, POST /sync/datasources/{dsId}/run'],
+            [<Code>oauth2:login</Code>, '允许发起 OAuth 2.0 授权码登录流程（/oauth2/authorize、/oauth2/token），详见 <a href="/docs/oauth2" className="text-blue-600 hover:underline">OAuth 2.0 文档</a>'],
           ]}
         />
       </DocSection>

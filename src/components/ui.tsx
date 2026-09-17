@@ -186,17 +186,89 @@ export function Table({ columns, rows, empty }: {
   )
 }
 
-export function Pagination({ page, total, size, onChange }: {
+export function Pagination({ page, total, size, onChange, onSizeChange, pageSizeOptions }: {
   page: number; total: number; size: number; onChange: (page: number) => void
+  onSizeChange?: (size: number) => void
+  pageSizeOptions?: number[]
 }) {
   const pages = Math.max(1, Math.ceil(total / size))
+  const current = Math.min(Math.max(0, page), pages - 1)
+  const [jump, setJump] = useState('')
+  const options = pageSizeOptions ?? [10, 20, 50, 100]
+
+  const go = (p: number) => onChange(Math.min(Math.max(0, p), pages - 1))
+  const doJump = () => {
+    const n = Number(jump)
+    if (Number.isInteger(n) && n >= 1) go(n - 1)
+    setJump('')
+  }
+
+  // 页码序列：始终含首页/末页，当前页前后各 2 页，其余折叠为 …
+  const seq: Array<number | '…'> = []
+  const add = (p: number) => seq.push(p)
+  if (pages <= 7) {
+    for (let i = 0; i < pages; i++) add(i)
+  } else {
+    add(0)
+    const from = Math.max(1, current - 2)
+    const to = Math.min(pages - 2, current + 2)
+    if (from > 1) seq.push('…')
+    for (let i = from; i <= to; i++) add(i)
+    if (to < pages - 2) seq.push('…')
+    add(pages - 1)
+  }
+
+  const navBtn = 'min-w-8 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40'
+
   return (
-    <div className="flex items-center justify-between px-1 pt-3 text-sm text-slate-500">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3 text-sm text-slate-500">
       <span>共 {total} 条</span>
-      <div className="flex items-center gap-2">
-        <Button size="sm" variant="secondary" disabled={page <= 0} onClick={() => onChange(page - 1)}>上一页</Button>
-        <span>{page + 1} / {pages}</span>
-        <Button size="sm" variant="secondary" disabled={page >= pages - 1} onClick={() => onChange(page + 1)}>下一页</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button className={navBtn} disabled={current <= 0} onClick={() => go(0)} title="首页">«</button>
+        <button className={navBtn} disabled={current <= 0} onClick={() => go(current - 1)} title="上一页">上一页</button>
+        {seq.map((p, i) =>
+          p === '…' ? (
+            <span key={`e${i}`} className="px-1 text-xs text-slate-400">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => go(p)}
+              className={cls(
+                'min-w-8 rounded border px-2 py-1 text-xs',
+                p === current
+                  ? 'border-blue-600 bg-blue-600 font-medium text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+              )}
+            >
+              {p + 1}
+            </button>
+          ),
+        )}
+        <button className={navBtn} disabled={current >= pages - 1} onClick={() => go(current + 1)} title="下一页">下一页</button>
+        <button className={navBtn} disabled={current >= pages - 1} onClick={() => go(pages - 1)} title="末页">»</button>
+        <span className="ml-1 text-xs">{current + 1} / {pages} 页</span>
+        <span className="flex items-center gap-1 text-xs">
+          跳至
+          <input
+            className="w-12 rounded border border-slate-300 px-1.5 py-1 text-center text-xs"
+            value={jump}
+            onChange={(e) => setJump(e.target.value.replace(/[^0-9]/g, ''))}
+            onKeyDown={(e) => e.key === 'Enter' && doJump()}
+            placeholder={String(current + 1)}
+          />
+          页
+          <button className={navBtn} onClick={doJump}>Go</button>
+        </span>
+        {onSizeChange && (
+          <select
+            className="rounded border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-700"
+            value={size}
+            onChange={(e) => onSizeChange(Number(e.target.value))}
+            title="每页条数"
+          >
+            {options.map((s) => <option key={s} value={s}>{s} 条/页</option>)}
+          </select>
+        )}
       </div>
     </div>
   )

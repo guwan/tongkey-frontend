@@ -5,7 +5,7 @@ import { fmtTime } from '../api/client'
 import type { ApiAccessLog, ClientView } from '../api/types'
 import {
   Badge, Button, Card, Checkbox, copyToClipboard, ErrorBlock, Field, Loading, Modal, Pagination, Select,
-  StatusBadge, Table, TextInput, cls, toast,
+  StatusBadge, Table, TextArea, TextInput, cls, toast,
 } from '../components/ui'
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -19,6 +19,7 @@ const SCOPE_LABELS: Record<string, string> = {
   'role_permission:write': '角色权限-关联',
   'change:read': '变更日志-读取',
   'sync:run': '同步-触发',
+  'oauth2:login': 'OAuth2-登录授权',
 }
 const SCOPE_OPTIONS = Object.keys(SCOPE_LABELS)
 
@@ -158,6 +159,7 @@ function ClientFormModal({ client, onClose, onCreated }: {
   const [clientId, setClientId] = useState(client?.clientId ?? '')
   const [name, setName] = useState(client?.name ?? '')
   const [scopes, setScopes] = useState<string[]>(client ? client.scopes.split(',').filter(Boolean) : ['user:read'])
+  const [redirectUris, setRedirectUris] = useState(client?.redirectUris ?? '')
   const [qpsLimit, setQpsLimit] = useState(client?.qpsLimit ?? 50)
   const [requireSignature, setRequireSignature] = useState(client?.requireSignature ?? false)
   const [enabled, setEnabled] = useState(client?.enabled ?? true)
@@ -170,7 +172,7 @@ function ClientFormModal({ client, onClose, onCreated }: {
     e.preventDefault()
     setSaving(true)
     try {
-      const body = { clientId, name, scopes: scopes.join(','), qpsLimit, requireSignature, enabled }
+      const body = { clientId, name, scopes: scopes.join(','), redirectUris, qpsLimit, requireSignature, enabled }
       if (client) {
         await clientApi.update(client.id, body)
         toast('已更新')
@@ -215,6 +217,19 @@ function ClientFormModal({ client, onClose, onCreated }: {
             ))}
           </div>
         </div>
+
+        <Field
+          label="OAuth2 回调地址白名单（redirect_uri）"
+          hint="一行一个（或逗号分隔），必须与发起授权时的 redirect_uri 完全一致。配置后并勾选 oauth2:login scope，接入方即可使用 OAuth2 登录"
+        >
+          <TextArea
+            rows={3}
+            className="!text-xs font-mono"
+            placeholder={'http://127.0.0.1:8080/callback\nhttps://your-app.example.com/oauth/callback'}
+            value={redirectUris ?? ''}
+            onChange={(e) => setRedirectUris(e.target.value)}
+          />
+        </Field>
 
         <div className="grid grid-cols-3 items-end gap-4">
           <Field label="限流（QPS）">
@@ -307,11 +322,12 @@ function CredRow({ label, value, onCopy }: { label: string; value: string; onCop
 function AccessLogPanel() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [clientFilter, setClientFilter] = useState('')
   const clients = useQuery({ queryKey: ['clients'], queryFn: clientApi.list })
   const query = useQuery({
-    queryKey: ['access-logs', page, clientFilter],
-    queryFn: () => clientApi.accessLogs(clientFilter || undefined, page, 20),
+    queryKey: ['access-logs', page, pageSize, clientFilter],
+    queryFn: () => clientApi.accessLogs(clientFilter || undefined, page, pageSize),
     refetchInterval: 10000,
   })
 
@@ -358,7 +374,11 @@ function AccessLogPanel() {
               { title: '时间', render: (l: ApiAccessLog) => fmtTime(l.createdAt) },
             ]}
           />
-          <Pagination page={page} total={query.data?.total ?? 0} size={20} onChange={setPage} />
+          <Pagination
+            page={page} total={query.data?.total ?? 0} size={pageSize}
+            onChange={setPage}
+            onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+          />
         </>
       )}
     </Card>

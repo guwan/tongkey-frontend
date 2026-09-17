@@ -8,7 +8,6 @@ import {
   Table, TextArea, TextInput, toast,
 } from '../components/ui'
 
-const PAGE_SIZE = 20
 const RESOURCE_TYPES = ['MENU', 'BUTTON', 'API', 'DATA', 'OTHER']
 
 const resourceColor: Record<string, string> = {
@@ -18,14 +17,15 @@ const resourceColor: Record<string, string> = {
 export default function Permissions() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [keyword, setKeyword] = useState('')
   const [sourceType, setSourceType] = useState('')
   const [resourceType, setResourceType] = useState('')
   const [editing, setEditing] = useState<PermissionView | 'new' | null>(null)
 
   const query = useQuery({
-    queryKey: ['permissions', page, keyword, sourceType, resourceType],
-    queryFn: () => permissionApi.page(page, PAGE_SIZE, keyword, sourceType, resourceType),
+    queryKey: ['permissions', page, pageSize, keyword, sourceType, resourceType],
+    queryFn: () => permissionApi.page(page, pageSize, keyword, sourceType, resourceType),
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['permissions'] })
@@ -94,7 +94,11 @@ export default function Permissions() {
                 },
               ]}
             />
-            <Pagination page={page} total={query.data?.total ?? 0} size={PAGE_SIZE} onChange={setPage} />
+            <Pagination
+              page={page} total={query.data?.total ?? 0} size={pageSize}
+              onChange={setPage}
+              onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+            />
           </>
         )}
       </Card>

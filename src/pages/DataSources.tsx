@@ -815,11 +815,12 @@ function SqlPreviewModal({ ds, onClose }: { ds: DataSourceView; onClose: () => v
 function SyncLogPanel() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const datasources = useQuery({ queryKey: ['datasources'], queryFn: dataSourceApi.list })
   const [dsFilter, setDsFilter] = useState('')
   const query = useQuery({
-    queryKey: ['sync-logs', page, dsFilter],
-    queryFn: () => dataSourceApi.syncLogs(dsFilter || undefined, page, 20),
+    queryKey: ['sync-logs', page, pageSize, dsFilter],
+    queryFn: () => dataSourceApi.syncLogs(dsFilter || undefined, page, pageSize),
     refetchInterval: 5000,
   })
 
@@ -872,7 +873,11 @@ function SyncLogPanel() {
               },
             ]}
           />
-          <Pagination page={page} total={query.data?.total ?? 0} size={20} onChange={setPage} />
+          <Pagination
+            page={page} total={query.data?.total ?? 0} size={pageSize}
+            onChange={setPage}
+            onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+          />
         </>
       )}
     </Card>

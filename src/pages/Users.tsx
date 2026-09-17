@@ -8,11 +8,10 @@ import {
   StatusBadge, Table, TextArea, TextInput, toast,
 } from '../components/ui'
 
-const PAGE_SIZE = 20
-
 export default function Users() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [keyword, setKeyword] = useState('')
   const [sourceType, setSourceType] = useState('')
   const [status, setStatus] = useState('')
@@ -20,8 +19,8 @@ export default function Users() {
   const [binding, setBinding] = useState<UserView | null>(null)
 
   const query = useQuery({
-    queryKey: ['users', page, keyword, sourceType, status],
-    queryFn: () => userApi.page(page, PAGE_SIZE, keyword, sourceType, status),
+    queryKey: ['users', page, pageSize, keyword, sourceType, status],
+    queryFn: () => userApi.page(page, pageSize, keyword, sourceType, status),
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['users'] })
@@ -83,7 +82,7 @@ export default function Users() {
                   title: '操作',
                   render: (u: UserView) => (
                     <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setBinding(u)}>角色</Button>
+                      <Button size="sm" variant="secondary" onClick={() => setBinding(u)}>授权角色</Button>
                       <Button size="sm" variant="secondary" onClick={() => setEditing(u)}>编辑</Button>
                       <Button size="sm" variant="danger" onClick={() => {
                         if (confirm(`确认删除用户「${u.username}」？将级联删除其角色关联。`)) removeMut.mutate(u.id)
@@ -93,7 +92,11 @@ export default function Users() {
                 },
               ]}
             />
-            <Pagination page={page} total={query.data?.total ?? 0} size={PAGE_SIZE} onChange={setPage} />
+            <Pagination
+              page={page} total={query.data?.total ?? 0} size={pageSize}
+              onChange={setPage}
+              onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+            />
           </>
         )}
       </Card>
@@ -115,19 +118,28 @@ function UserFormModal({ user, onClose, onSaved }: { user: UserView | null; onCl
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
   const [status, setStatus] = useState<string>(user?.status ?? 'ENABLED')
   const [extraAttrs, setExtraAttrs] = useState(user?.extraAttrs ?? '')
+  const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (password && password.length < 6) {
+      toast('密码至少 6 位', 'error')
+      return
+    }
     setSaving(true)
     try {
       const attrs = extraAttrs.trim() ? extraAttrs : undefined
       if (user) {
         await userApi.update(user.id, { displayName: displayName || undefined, status, extraAttrs: attrs })
+        if (password) await userApi.setPassword(user.id, password)
       } else {
-        await userApi.create({ username, displayName: displayName || undefined, status, extraAttrs: attrs })
+        await userApi.create({
+          username, displayName: displayName || undefined, status, extraAttrs: attrs,
+          password: password || undefined,
+        })
       }
-      toast(user ? '已更新' : '已创建')
+      toast(user ? (password ? '已更新，密码已重置' : '已更新') : (password ? '已创建，密码已设置' : '已创建'))
       onSaved()
     } catch (err) {
       toast(err instanceof Error ? err.message : '保存失败', 'error')
@@ -146,6 +158,18 @@ function UserFormModal({ user, onClose, onSaved }: { user: UserView | null; onCl
         )}
         <Field label="显示名">
           <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        </Field>
+        <Field
+          label={user ? '重置登录密码' : '登录密码'}
+          hint={user ? '留空表示不修改；设置后用于 OAuth2 授权页登录，至少 6 位' : '用于 OAuth2 授权页登录，至少 6 位；可暂不设置'}
+        >
+          <TextInput
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={user ? '留空不修改' : '可留空，稍后在编辑中设置'}
+          />
         </Field>
         <Field label="状态">
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>

@@ -156,6 +156,7 @@ export interface ClientView {
   name: string
   apiKey: string
   scopes: string
+  redirectUris: string | null
   qpsLimit: number
   requireSignature: boolean
   enabled: boolean

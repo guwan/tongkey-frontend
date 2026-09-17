@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from 'react-router-dom'
 import QuickStart from './QuickStart'
 import DataDictionary from './DataDictionary'
 import OpenApi from './OpenApi'
+import OAuth2Doc from './OAuth2'
 import WebhookSpec from './WebhookSpec'
 import Changelog from './Changelog'
 import { cls } from '../components/ui'
@@ -9,6 +10,7 @@ import { cls } from '../components/ui'
 const sections = [
   { to: '/docs', label: '快速开始（Quick Start）', end: true },
   { to: '/docs/openapi', label: '开放 API 参考（更新/查询）' },
+  { to: '/docs/oauth2', label: 'OAuth 2.0 登录授权' },
   { to: '/docs/dictionary', label: '数据模型字典' },
   { to: '/docs/webhook', label: 'Webhook 接收端规范' },
   { to: '/docs/changelog', label: '变更日志（Changelog）' },
@@ -54,6 +56,7 @@ export default function Docs() {
         <Routes>
           <Route index element={<QuickStart />} />
           <Route path="openapi" element={<OpenApi />} />
+          <Route path="oauth2" element={<OAuth2Doc />} />
           <Route path="dictionary" element={<DataDictionary />} />
           <Route path="webhook" element={<WebhookSpec />} />
           <Route path="changelog" element={<Changelog />} />

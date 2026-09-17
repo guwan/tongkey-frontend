@@ -8,19 +8,18 @@ import {
   Table, TextArea, TextInput, toast,
 } from '../components/ui'
 
-const PAGE_SIZE = 20
-
 export default function Roles() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [keyword, setKeyword] = useState('')
   const [sourceType, setSourceType] = useState('')
   const [editing, setEditing] = useState<RoleView | 'new' | null>(null)
   const [binding, setBinding] = useState<RoleView | null>(null)
 
   const query = useQuery({
-    queryKey: ['roles', page, keyword, sourceType],
-    queryFn: () => roleApi.page(page, PAGE_SIZE, keyword, sourceType),
+    queryKey: ['roles', page, pageSize, keyword, sourceType],
+    queryFn: () => roleApi.page(page, pageSize, keyword, sourceType),
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['roles'] })
@@ -82,7 +81,11 @@ export default function Roles() {
                 },
               ]}
             />
-            <Pagination page={page} total={query.data?.total ?? 0} size={PAGE_SIZE} onChange={setPage} />
+            <Pagination
+              page={page} total={query.data?.total ?? 0} size={pageSize}
+              onChange={setPage}
+              onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+            />
           </>
         )}
       </Card>

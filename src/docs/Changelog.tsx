@@ -3,6 +3,18 @@ import { DocSection } from './Docs'
 
 const entries = [
   {
+    version: 'v1.1.0',
+    date: '2026-09-18',
+    tag: '新增' as const,
+    items: [
+      'OAuth 2.0 授权码模式：/oauth2/authorize 浏览器登录+同意页、/oauth2/token 支持 authorization_code 与 refresh_token（refresh 令牌旋转）',
+      '新增 scope：oauth2:login；接入方可配置 redirect_uri 精确白名单，开放 API 支持 Authorization: Bearer JWT 与 X-API-Key 双通道鉴权',
+      '新增 GET /api/v1/me 令牌身份探查端点；Swagger 增加 BearerAuth 安全方案',
+      '用户管理支持设置/重置登录密码（PUT /console/users/{id}/password），用户列表接口不再返回密码字段',
+      '控制台通用分页组件增强：首尾页、页码折叠、跳转指定页、每页条数切换',
+    ],
+  },
+  {
     version: 'v1.0.0',
     date: '2026-08-28',
     tag: 'GA' as const,

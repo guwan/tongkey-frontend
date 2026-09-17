@@ -29,10 +29,12 @@ export const userApi = {
   page: (page: number, size: number, keyword?: string, sourceType?: string, status?: string) =>
     get<PageData<UserView>>(`/console/users${q({ page, size, keyword, sourceType, status })}`),
   detail: (id: string) => get<UserDetail>(`/console/users/${id}`),
-  create: (body: { username: string; displayName?: string; status?: string; extraAttrs?: string }) =>
+  create: (body: { username: string; displayName?: string; status?: string; extraAttrs?: string; password?: string }) =>
     post<UserView>('/console/users', body),
   update: (id: string, body: { displayName?: string; status?: string; extraAttrs?: string }) =>
     put<UserView>(`/console/users/${id}`, body),
+  setPassword: (id: string, password: string) =>
+    put<void>(`/console/users/${id}/password`, { password }),
   remove: (id: string) => del<void>(`/console/users/${id}`),
   bindRole: (userId: string, roleId: string) => post<void>(`/console/users/${userId}/roles`, { roleId }),
   unbindRole: (userId: string, roleId: string) => del<void>(`/console/users/${userId}/roles/${roleId}`),

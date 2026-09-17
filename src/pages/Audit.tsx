@@ -5,21 +5,20 @@ import { fmtTime } from '../api/client'
 import type { AuditLog } from '../api/types'
 import { Badge, Button, Card, ErrorBlock, Loading, Pagination, Select, Table } from '../components/ui'
 
-const PAGE_SIZE = 20
-
 const actionColor: Record<string, string> = { CREATE: 'green', UPDATE: 'blue', DELETE: 'red' }
 const actionLabel: Record<string, string> = { CREATE: '新增', UPDATE: '修改', DELETE: '删除' }
 
 export default function Audit() {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [entityType, setEntityType] = useState('')
   const [days, setDays] = useState('7')
 
   const sinceMillis = days ? Date.now() - Number(days) * 86400_000 : undefined
 
   const query = useQuery({
-    queryKey: ['audit', page, entityType, days],
-    queryFn: () => auditApi.page(page, PAGE_SIZE, entityType || undefined, sinceMillis),
+    queryKey: ['audit', page, pageSize, entityType, days],
+    queryFn: () => auditApi.page(page, pageSize, entityType || undefined, sinceMillis),
   })
 
   return (
@@ -79,7 +78,11 @@ export default function Audit() {
                 },
               ]}
             />
-            <Pagination page={page} total={query.data?.total ?? 0} size={PAGE_SIZE} onChange={setPage} />
+            <Pagination
+              page={page} total={query.data?.total ?? 0} size={pageSize}
+              onChange={setPage}
+              onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+            />
           </>
         )}
       </Card>

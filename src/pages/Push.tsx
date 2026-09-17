@@ -269,11 +269,12 @@ function TargetFormModal({ target, onClose }: { target: PushTargetView | null; o
 function PushLogPanel() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [targetFilter, setTargetFilter] = useState('')
   const targets = useQuery({ queryKey: ['push-targets'], queryFn: pushApi.targets })
   const query = useQuery({
-    queryKey: ['push-logs', page, targetFilter],
-    queryFn: () => pushApi.logs(targetFilter || undefined, page, 20),
+    queryKey: ['push-logs', page, pageSize, targetFilter],
+    queryFn: () => pushApi.logs(targetFilter || undefined, page, pageSize),
     refetchInterval: 5000,
   })
 
@@ -337,7 +338,11 @@ function PushLogPanel() {
               },
             ]}
           />
-          <Pagination page={page} total={query.data?.total ?? 0} size={20} onChange={setPage} />
+          <Pagination
+            page={page} total={query.data?.total ?? 0} size={pageSize}
+            onChange={setPage}
+            onSizeChange={(s) => { setPageSize(s); setPage(0) }}
+          />
         </>
       )}
     </Card>
